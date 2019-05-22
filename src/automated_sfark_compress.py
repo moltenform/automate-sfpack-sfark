@@ -18,6 +18,7 @@ import time
 # set this to False to skip verification with sfarkxtc
 useSfarkXtcToConfirmIntegrity = True
 
+# download sfarkxtc.exe from 'releases' at https://github.com/moltenform/sfarkxtc-windows
 sfarkbin = r'C:\data\e4\downloads\dloads\SFPack\sfarkbinaries\sfArk.exe'
 sfarkxtcbin = r'C:\data\e2\d_1\repos\sfarkxtc\sfarkxtc-windows-3.0b-win64\sfarkxtc-windows-3.0b-win64\sfarkxtc.exe'
 
@@ -64,7 +65,7 @@ def getFilenamesAndCheckIfFilesAlreadyExist(s):
     assertTrue(not searchFor in s, f"we don't support filepaths that contain {searchFor}", s)
     return s, out, tempname, tempnameout
 
-def compressToSfark(s):
+def compressToSfarkImpl(s):
     s, out, tempname, tempnameout = getFilenamesAndCheckIfFilesAlreadyExist(s)
     trace('renaming', s,'\n', tempname)
     files.move(s, tempname, False)
@@ -81,14 +82,14 @@ def compressToSfark(s):
     trace('waiting...')
     for _ in range(maxIters):
         time.sleep(0.5)
-        subwindow = app.window(title='Compressing a.sf2...')
-        if not subwindow or not subwindow.exists():
+        wnd = app.window(title='Compressing a.sf2...')
+        if not wnd or not wnd.exists():
             looksFinished = True
             print('looks done')
             break
         else:
             print('.', end='', flush=True)
-        
+    
     if not looksFinished:
         assertTrue(False, s, 'timed out')
     if not files.exists(tempnameout):
@@ -96,18 +97,18 @@ def compressToSfark(s):
     if not files.getsize(tempnameout) > 100:
         assertTrue(False, s, 'size is suspiciously small')
         
-    files.move(tempnameout, out, False)
     time.sleep(1)
     app.kill()
     time.sleep(1)
+    files.move(tempnameout, out, False)
     return tempname, out
 
-def startSafelyConvertSf2ToSfark(s):
+def compressToSfark(s):
     checkBeforeRun(warnBeforeRun, files.getname(__file__))
     
     expectChecksum = files.computeHash(s, 'md5')
     assertTrue(s.lower().endswith('.sf2'), s)
-    tempname, out = compressToSfark(s)
+    tempname, out = compressToSfarkImpl(s)
     if useSfarkXtcToConfirmIntegrity:
         tempUnpackName = files.join(files.getparent(s), 'tmpUnpack.sf2')
         if files.exists(tempUnpackName):
@@ -119,17 +120,18 @@ def startSafelyConvertSf2ToSfark(s):
         assertEq(expectChecksum, checkSumOut, s, tempUnpackName)
         trace('deleting temporary file', tempUnpackName)
         files.delete(tempUnpackName)
-    trace('deleting temporary file', tempname)
+    trace('deleting original file', tempname)
     files.delete(tempname)
     
     # don't overheat the cpu
+    trace('sleeping...')
     secondsRestBetweenConversions = 10
     time.sleep(secondsRestBetweenConversions)
 
 def runTest():
     # run these tests with "automated_sfark_compress.py --test"
-    srcSfark = r'C:\data\e2\d_1\repos\sfarkxtc\sfarkxtc-windows\src\test\sfarks\lvl4'
-    testdir = r'C:\data\e2\d_1\repos\sfarkxtc\automate-sfpack-sfark\src\nocpy_test\sf2'
+    srcSfark = './test/resources/sfark'
+    testdir = './test/nocpy_temp'
     files.ensure_empty_directory(testdir)
     
     # get some sf2 files for testing
@@ -143,14 +145,17 @@ def runTest():
     # convert them into sfarks
     trace('done setting up sf2 files into test directory')
     sys.argv = [__file__, testdir]
-    startScript(startSafelyConvertSf2ToSfark, getFilenamesAndCheckIfFilesAlreadyExist, runTest, '.sf2', files.getname(__file__))
+    startScript(compressToSfark, getFilenamesAndCheckIfFilesAlreadyExist, runTest, '.sf2', files.getname(__file__))
+    trace(f'test complete. if you look at {testdir}, all sf2 files should have been converted to sfark.')
+    if getInputBool('delete temp files now?'):
+        files.ensure_empty_directory(testdir)
 
 def go():
     checkPrereq(sfarkbin, 'sfark.exe')
     if useSfarkXtcToConfirmIntegrity:
-        checkPrereq(sfarkxtcbin, 'sfarkxtc.exe', 'https://github.com/moltenform/sfarkxtc-windows')
+        checkPrereq(sfarkxtcbin, 'sfarkxtc.exe', '"releases" at https://github.com/moltenform/sfarkxtc-windows')
     
-    startScript(startSafelyConvertSf2ToSfark, getFilenamesAndCheckIfFilesAlreadyExist, runTest, '.sf2', files.getname(__file__))
+    startScript(compressToSfark, getFilenamesAndCheckIfFilesAlreadyExist, runTest, '.sf2', files.getname(__file__))
 
 if __name__=='__main__':
     go()
