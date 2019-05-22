@@ -15,8 +15,9 @@ from automated_common import *
 import os
 import time
 
-# set this to False to skip using sfarkxtc
+# set this to False to skip verification with sfarkxtc
 useSfarkXtcToConfirmIntegrity = True
+
 sfarkbin = r'C:\data\e4\downloads\dloads\SFPack\sfarkbinaries\sfArk.exe'
 sfarkxtcbin = r'C:\data\e2\d_1\repos\sfarkxtc\sfarkxtc-windows-3.0b-win64\sfarkxtc-windows-3.0b-win64\sfarkxtc.exe'
 
@@ -34,29 +35,37 @@ confirm that Associated-file launch + Process files immediately is checked,
 and nothing else
 '''
 
-
-
 def runSfarkXtc(sin, sout):
     assertTrue(sin.lower().endswith('.sfark'), sin)
     assertTrue(sout.lower().endswith('.sf2'), sout)
     assertTrue(not files.exists(sout), sout)
-    args = [sfarkxtc, sin, sout, '--quiet']
+    args = [sfarkxtcbin, sin, sout, '--quiet']
     files.run(args)
     assertTrue(files.exists(sout), sout)
-    
-def makeSfark(s):
+
+searchFor = 'Compressing '
+
+def getFilenamesAndCheckIfFilesAlreadyExist(s):
     assertTrue(s.lower().endswith('.sf2'), s)
     a,b = os.path.splitext(s)
     out = a + '.sfark'
     assertTrue(not files.exists(out), 'already exists', out)
     
-    # renaming because 
-    # 1) sfark chokes on complex filenames
+    # make a simpler filename because 
+    # 1) sfark shows error dialog on complex filenames
     # 2) allows easier window search
     tempname = files.getparent(s) + '\\a.sf2'
     tempnameout = files.getparent(s) + '\\a.sfark'
+    tempnameunpack = files.getparent(s) + '\\tmpUnpack.sf2'
     assertTrue(not files.exists(tempname), 'already exists', tempname)
     assertTrue(not files.exists(tempnameout), 'already exists', tempnameout)
+    assertTrue(not files.exists(tempnameunpack), 'already exists', tempnameunpack)
+    
+    assertTrue(not searchFor in s, f"we don't support filepaths that contain {searchFor}", s)
+    return s, out, tempname, tempnameout
+
+def compressToSfark(s):
+    s, out, tempname, tempnameout = getFilenamesAndCheckIfFilesAlreadyExist(s)
     trace('renaming', s,'\n', tempname)
     files.move(s, tempname, False)
     
@@ -65,21 +74,20 @@ def makeSfark(s):
     assertTrue(not '"' in tempname, tempname)
     app = Application(backend="win32").start(f'"{sfarkbin}" "{tempname}"')
     
-    assertTrue(not 'Compressing ' in s, s)
-    
-    time.sleep(5) # wait for the app to be launched/compression started
+    # wait for the app to be launched/compression started
+    time.sleep(5)
     
     looksFinished = False
+    trace('waiting...')
     for _ in range(maxIters):
         time.sleep(0.5)
         subwindow = app.window(title='Compressing a.sf2...')
-        
         if not subwindow or not subwindow.exists():
             looksFinished = True
             print('looks done')
             break
         else:
-            print('window still there, waiting')
+            print('.', end='', flush=True)
         
     if not looksFinished:
         assertTrue(False, s, 'timed out')
@@ -89,38 +97,60 @@ def makeSfark(s):
         assertTrue(False, s, 'size is suspiciously small')
         
     files.move(tempnameout, out, False)
-    
     time.sleep(1)
     app.kill()
+    time.sleep(1)
     return tempname, out
 
 def startSafelyConvertSf2ToSfark(s):
+    checkBeforeRun(warnBeforeRun, files.getname(__file__))
+    
     expectChecksum = files.computeHash(s, 'md5')
     assertTrue(s.lower().endswith('.sf2'), s)
-    tempname, out = makeSfark(s)
-    tempUnpackName = files.join(files.getparent(s), 'tmpUnpack.sf2')
-    runSfarkXtc(out, tempUnpackName)
-    checkSumOut = files.computeHash(tempUnpackName, 'md5')
-    assertEq(expectChecksum, checkSumOut, s)
-    trace('confirm match', expectChecksum, checkSumOut)
-    trace('deleting', tempUnpackName)
-    trace('deleting', tempname)
-    files.delete(tempUnpackName)
-    files.delete(tempname)
+    tempname, out = compressToSfark(s)
+    if useSfarkXtcToConfirmIntegrity:
+        tempUnpackName = files.join(files.getparent(s), 'tmpUnpack.sf2')
+        if files.exists(tempUnpackName):
+            softDeleteFile(tempUnpackName)
 
+        runSfarkXtc(out, tempUnpackName)
+        checkSumOut = files.computeHash(tempUnpackName, 'md5')
+        trace('verifying match', expectChecksum, checkSumOut)
+        assertEq(expectChecksum, checkSumOut, s, tempUnpackName)
+        trace('deleting temporary file', tempUnpackName)
+        files.delete(tempUnpackName)
+    trace('deleting temporary file', tempname)
+    files.delete(tempname)
+    
+    # don't overheat the cpu
+    secondsRestBetweenConversions = 10
+    time.sleep(secondsRestBetweenConversions)
+
+def runTest():
+    # run these tests with "automated_sfark_compress.py --test"
+    srcSfark = r'C:\data\e2\d_1\repos\sfarkxtc\sfarkxtc-windows\src\test\sfarks\lvl4'
+    testdir = r'C:\data\e2\d_1\repos\sfarkxtc\automate-sfpack-sfark\src\nocpy_test\sf2'
+    files.ensure_empty_directory(testdir)
+    
+    # get some sf2 files for testing
+    trace('setting up sf2 files into test directory...')
+    for f, short in files.listfiles(srcSfark):
+        if short.lower().endswith('.sfark'):
+            out = files.join(testdir, short.lower().replace('.sfark', '.sf2'))
+            assertTrue(not files.exists(out))
+            runSfarkXtc(f, out)
+    
+    # convert them into sfarks
+    trace('done setting up sf2 files into test directory')
+    sys.argv = [__file__, testdir]
+    startScript(startSafelyConvertSf2ToSfark, getFilenamesAndCheckIfFilesAlreadyExist, runTest, '.sf2', files.getname(__file__))
 
 def go():
-    checkPrereqs(sfarkbin, 'sfark.exe')
+    checkPrereq(sfarkbin, 'sfark.exe')
     if useSfarkXtcToConfirmIntegrity:
-        checkPrereqs(sfarkxtcbin, 'sfarkxtc.exe', 'https://github.com/moltenform/sfarkxtc-windows')
-    checkBeforeRun(warnBeforeRun, files.getname(__file__))
-    startScript(startSafelyConvertSf2ToSfark, '.sf2', files.getname(__file__))
-
-# pywinauto tips: use print_control_identifiers(depth=1)
+        checkPrereq(sfarkxtcbin, 'sfarkxtc.exe', 'https://github.com/moltenform/sfarkxtc-windows')
+    
+    startScript(startSafelyConvertSf2ToSfark, getFilenamesAndCheckIfFilesAlreadyExist, runTest, '.sf2', files.getname(__file__))
 
 if __name__=='__main__':
-    
-    
-    startSafelyConvertSf2ToSfark(r'C:\data\e4\downloads\dloads\allsf\SoundFonts - The Collection\SoundFont Project\SoundFonts\[SF2] Bass Ibanez Roadstar II Picked (25,398KB).sf2')
-    #~ go()
-    
+    go()
