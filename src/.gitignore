@@ -1,3 +1,7 @@
+
+.has_seen_msg*
+nocpy_*
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

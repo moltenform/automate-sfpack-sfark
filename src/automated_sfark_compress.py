@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 # moltenform (Ben Fisher), 2019
 # GPLv3
 #
@@ -13,6 +14,11 @@
 from automated_common import *
 import os
 import time
+
+# set this to False to skip using sfarkxtc
+useSfarkXtcToConfirmIntegrity = True
+sfarkbin = r'C:\data\e4\downloads\dloads\SFPack\sfarkbinaries\sfArk.exe'
+sfarkxtcbin = r'C:\data\e2\d_1\repos\sfarkxtc\sfarkxtc-windows-3.0b-win64\sfarkxtc-windows-3.0b-win64\sfarkxtc.exe'
 
 warnBeforeRun = '''
 note: before running, I recommend that you
@@ -64,7 +70,7 @@ def makeSfark(s):
     time.sleep(5) # wait for the app to be launched/compression started
     
     looksFinished = False
-    for _ in range(9999999):
+    for _ in range(maxIters):
         time.sleep(0.5)
         subwindow = app.window(title='Compressing a.sf2...')
         
@@ -102,12 +108,19 @@ def startSafelyConvertSf2ToSfark(s):
     files.delete(tempUnpackName)
     files.delete(tempname)
 
-sfarkbin = r'C:\data\e4\downloads\dloads\SFPack\sfarkbinaries\sfArk.exe'
-sfarkxtc = r'C:\data\e2\d_1\repos\sfarkxtc\sfarkxtc-windows-3.0b-win64\sfarkxtc-windows-3.0b-win64\sfarkxtc.exe'
-useSfarkXtcToConfirmIntegrity = True
+
+def go():
+    checkPrereqs(sfarkbin, 'sfark.exe')
+    if useSfarkXtcToConfirmIntegrity:
+        checkPrereqs(sfarkxtcbin, 'sfarkxtc.exe', 'https://github.com/moltenform/sfarkxtc-windows')
+    checkBeforeRun(warnBeforeRun, files.getname(__file__))
+    startScript(startSafelyConvertSf2ToSfark, '.sf2', files.getname(__file__))
+
+# pywinauto tips: use print_control_identifiers(depth=1)
 
 if __name__=='__main__':
-    # use print_control_identifiers(depth=4) to investigate
+    
+    
     startSafelyConvertSf2ToSfark(r'C:\data\e4\downloads\dloads\allsf\SoundFonts - The Collection\SoundFont Project\SoundFonts\[SF2] Bass Ibanez Roadstar II Picked (25,398KB).sf2')
     #~ go()
     

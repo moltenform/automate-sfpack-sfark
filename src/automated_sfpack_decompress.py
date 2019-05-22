@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 # moltenform (Ben Fisher), 2019
 # GPLv3
 #
@@ -11,6 +12,7 @@ from automated_common import *
 import os
 import time
 
+sfpackbin = r'C:\data\e4\downloads\dloads\SFPack\SFPACK.EXE'
 
 
 def appendToTextFile(path, s):
@@ -85,18 +87,17 @@ def startUnsfpack(s):
     assertTrue(not searchFor in s)
     
     looksFinished = False
-    for _ in range(9999999):
+    for _ in range(maxIters):
         time.sleep(0.5)
-        #~ listView = app.window(class_name='ListView')
         listView = aa.SysListView321
         assertTrue(listView and listView.exists())
         listViewText = ' '.join(listView.texts())
         if searchFor in listViewText:
             looksFinished = True
-            print('looks done')
+            trace('looks done')
             break
         else:
-            print('still waiting')
+            trace('still waiting')
             
     if not looksFinished:
         assertTrue(False, s, 'timed out')
@@ -106,19 +107,22 @@ def startUnsfpack(s):
         assertTrue(False, s, 'size is suspiciously small')
     
     time.sleep(1)
+    app.kill()
+    return tempname, tempnameout, out
+    
+def startUnsfpackAll(s):
+    tempname, tempnameout, out = startUnsfpack(s)
     files.move(tempname, s, False)
     files.move(tempnameout, out, False)
-    app.kill()
-    
-    
-sfpackbin = r'C:\data\e4\downloads\dloads\SFPack\SFPACK.EXE'
 
+def tmpTest():
+    if files.exists(r'C:\data\e2\d_1\repos\sfarkxtc\automate-sfpack-sfark\nocpy_test\a.sfpack'):
+        files.move(r'C:\data\e2\d_1\repos\sfarkxtc\automate-sfpack-sfark\nocpy_test\a.sfpack', r'C:\data\e2\d_1\repos\sfarkxtc\automate-sfpack-sfark\nocpy_test\hh.sfpack', False)
+    startUnsfpack(r'C:\data\e2\d_1\repos\sfarkxtc\automate-sfpack-sfark\nocpy_test\hh.sfpack')
+
+def go():
+    startScript(startUnsfpackAll, '.sfpack', files.getname(__file__))
 
 if __name__=='__main__':
-    if files.exists(r'C:\data\e4\downloads\dloads\allsf\SoundFonts - The Collection\Confusion\SoundFonts\a.sfpack'):
-        files.move(r'C:\data\e4\downloads\dloads\allsf\SoundFonts - The Collection\Confusion\SoundFonts\a.sfpack', r'C:\data\e4\downloads\dloads\allsf\SoundFonts - The Collection\Confusion\SoundFonts\[SF2] Eternal Hydrogen II - FM.sfpack', False)
-    # 
-    #~ startUnsfpack(r'C:\data\e4\downloads\dloads\allsf\SoundFonts - The Collection\Confusion\SoundFonts\[SF2] Eternal Hydrogen II - FM.sfpack')
-    startUnsfpack(r'C:\data\e4\downloads\dloads\allsf\SoundFonts - The Collection\ZSF Distribution\SoundFonts\General-MIDI\[SF2] GM SoundFonts [shared by ZSF] - Airfont 380 GM Beta - Melodic.sfpack')
-    #~ go()
+    go()
     
