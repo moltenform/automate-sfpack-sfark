@@ -1,19 +1,17 @@
 # moltenform (Ben Fisher), 2019
 # GPLv3
+#
+# use this tool to unpack a sfpack to a 
+#
+# if you are running a 64bit python, you might see
+# UserWarning: 32-bit application should be automated using 32-bit Python
+# but everything still seems to work.
 
-from ben_python_common import *
+from automated_common import *
 import os
 import time
 
-# note: before running, recommend that you change sfpack.exe Preferences:
-# uncheck Search for Text File
-# uncheck Search for License File
 
-# might print a warning
-# UserWarning: 32-bit application should be automated using 32-bit Python
-# but it still seems to work.
-
-sfpackbin = r'C:\data\e4\downloads\dloads\SFPack\SFPACK.EXE'
 
 def appendToTextFile(path, s):
     a, b = os.path.splitext(path)
@@ -112,6 +110,9 @@ def startUnsfpack(s):
     files.move(tempnameout, out, False)
     app.kill()
     
+    
+sfpackbin = r'C:\data\e4\downloads\dloads\SFPack\SFPACK.EXE'
+
 
 if __name__=='__main__':
     if files.exists(r'C:\data\e4\downloads\dloads\allsf\SoundFonts - The Collection\Confusion\SoundFonts\a.sfpack'):

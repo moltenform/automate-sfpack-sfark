@@ -1,21 +1,34 @@
 # moltenform (Ben Fisher), 2019
 # GPLv3
+#
+# use this tool to *safely* compress a .sf2 to a .sfark
+# it runs sfark.exe and drives its ui, then
+# the open-source sfarkxtc tool confirms that the
+# input and output are 100% identical.
+#
+# if you are running a 64bit python, you might see
+# UserWarning: 32-bit application should be automated using 32-bit Python
+# but everything still seems to work.
 
-from ben_python_common import *
+from automated_common import *
 import os
 import time
 
-sfarkbin = r'C:\data\e4\downloads\dloads\SFPack\sfarkbinaries\sfArk.exe'
-sfarkxtc = r'C:\data\e2\d_1\repos\sfarkxtc\sfarkxtc-windows-3.0b-win64\sfarkxtc-windows-3.0b-win64\sfarkxtc.exe'
+warnBeforeRun = '''
+note: before running, I recommend that you
+copy sfark.exe to a writable directory (not program files)
+open sfark.exe, open File->Preferences, and change the following:
+Open tab "when compressing..."
+compression level 4:Maximum
+include notes-never
+include license-never
+enable hide tips
+Open tab "General"
+confirm that Associated-file launch + Process files immediately is checked,
+and nothing else
+'''
 
-# note: before running, recommend that you change sfark.exe Preferences to say:
-# compression level Maximum
-# include notes-never, include license-never
-# when opening a file, start Compression (i think this is the default)
 
-# might print a warning
-# UserWarning: 32-bit application should be automated using 32-bit Python
-# but it still seems to work.
 
 def runSfarkXtc(sin, sout):
     assertTrue(sin.lower().endswith('.sfark'), sin)
@@ -42,8 +55,6 @@ def makeSfark(s):
     files.move(s, tempname, False)
     
     from pywinauto.application import Application
-    #~ app = Application(backend="uia").start([sfarkbin, s])
-    #~ app = Application(backend="uia").start(f'"{sfarkbin}" "{tempname}"')
     assertTrue(not '"' in sfarkbin, sfarkbin)
     assertTrue(not '"' in tempname, tempname)
     app = Application(backend="win32").start(f'"{sfarkbin}" "{tempname}"')
@@ -88,8 +99,12 @@ def startSafelyConvertSf2ToSfark(s):
     trace('confirm match', expectChecksum, checkSumOut)
     trace('deleting', tempUnpackName)
     trace('deleting', tempname)
-    #~ files.delete(tempUnpackName)
-    #~ files.delete(tempname)
+    files.delete(tempUnpackName)
+    files.delete(tempname)
+
+sfarkbin = r'C:\data\e4\downloads\dloads\SFPack\sfarkbinaries\sfArk.exe'
+sfarkxtc = r'C:\data\e2\d_1\repos\sfarkxtc\sfarkxtc-windows-3.0b-win64\sfarkxtc-windows-3.0b-win64\sfarkxtc.exe'
+useSfarkXtcToConfirmIntegrity = True
 
 if __name__=='__main__':
     # use print_control_identifiers(depth=4) to investigate
