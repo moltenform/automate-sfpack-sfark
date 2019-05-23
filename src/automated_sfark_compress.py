@@ -128,6 +128,19 @@ def compressToSfark(s):
     secondsRestBetweenConversions = 10
     time.sleep(secondsRestBetweenConversions)
 
+def recurseSfpackToSfark(dir):
+    import automated_sfpack_decompress
+    for f, short in files.recursefiles(dir):
+        if short.lower().endswith('.sfpack'):
+            getFilenamesAndCheckIfFilesAlreadyExist(f.replace('.sfpack', '.sf2'))
+            automated_sfpack_decompress.getFilenamesAndCheckIfFilesAlreadyExist(f)
+            
+    for f, short in files.recursefiles(dir):
+        if short.lower().endswith('.sfpack'):
+            stopIfStopMarkerFound()
+            sf2 = automated_sfpack_decompress.unpackSfpack(f)
+            compressToSfark(sf2)
+
 def runTest():
     # run these tests with "automated_sfark_compress.py --test"
     srcSfark = './test/resources/sfark'

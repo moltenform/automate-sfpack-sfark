@@ -131,6 +131,7 @@ def unpackSfpack(s):
     trace('sleeping...')
     secondsRestBetweenConversions = 5
     time.sleep(secondsRestBetweenConversions)
+    return out
 
 def runTest():
     # run these tests with "automated_sfpack_decompress.py --test"
@@ -153,7 +154,7 @@ def runTest():
         files.ensure_empty_directory(testdir)
 
 def go():
-    warn('if an error msg shows up saying "Could not register shell extension", this is fine - we can work around it.')
+    warn("if an error msg shows up saying 'Could not register shell extension!', ignore it because we can automatically close it.")
     checkPrereq(sfpackbin, 'sfpack.exe')
     startScript(unpackSfpack, getFilenamesAndCheckIfFilesAlreadyExist, runTest, '.sfpack', files.getname(__file__))
 

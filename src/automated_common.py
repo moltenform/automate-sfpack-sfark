@@ -69,6 +69,7 @@ def startScriptRun(fn, fnCheck, extension, filepath, isRecurse):
     fnIter = files.recursefiles if isRecurse else files.listfiles
     for f, short in fnIter(filepath):
         if short.lower().endswith(extension):
+            stopIfStopMarkerFound()
             fn(f)
 
 def checkPrereq(binpath, binname, website=None):
@@ -89,6 +90,12 @@ def checkBeforeRun(warnBeforeRun, scriptname):
             files.writeall(markerFile, '', 'w')
         else:
             sys.exit(0)
+
+def stopIfStopMarkerFound():
+    markerFile = f'nocpy_request_stop'
+    if files.exists(markerFile):
+        trace(f'exiting because the file {markerFile} is present.')
+        sys.exit(0)
 
 # pywinauto tips: print_control_identifiers(depth=1)
 maxIters = 10000
