@@ -44,16 +44,40 @@ def getFilenamesAndCheckIfFilesAlreadyExist(s):
     return s, out, tempname, tempnameout
 
 def unpackSfpackImpl(s):
+    addToLog(f'unpackSfpackImpl {s}')
     s, out, tempname, tempnameout = getFilenamesAndCheckIfFilesAlreadyExist(s)
     
     trace('renaming', s,'\n', tempname)
     files.move(s, tempname, False)
     
+    looksFinished = None
+    try:
+        looksFinished = runPywinAuto(s, out, tempname, tempnameout)
+    except:
+        logSeriousError(f'failure while automating {sfpackbin}')
+        logSeriousError(str(sys.exc_info()[1]))
+    
+    if not looksFinished:
+        logSeriousError('timed out')
+    if not files.exists(tempnameout):
+        logSeriousError('did not see output')
+        files.writeall(tempnameout, 'placeholder', 'w')
+    if not files.getsize(tempnameout) > 100:
+        logSeriousError('size is suspiciously small')
+        
+    files.move(tempnameout, out, False)
+    return tempname, out
+    
+def runPywinAuto(s, out, tempname, tempnameout):
+    if not files.getsize(tempname) > 100:
+        logSeriousError('input file size is too small, probably an invalid file')
+        return True
+    
     from pywinauto.application import Application
     assertTrue(not '"' in sfpackbin, sfpackbin)
     assertTrue(not '"' in tempname, tempname)
     app = Application(backend="win32").start(f'"{sfpackbin}" "{tempname}"')
-    
+        
     # allow time for app to open
     time.sleep(5) 
     
@@ -92,7 +116,7 @@ def unpackSfpackImpl(s):
     
     looksFinished = False
     trace('waiting...')
-    for _ in range(maxIters):
+    for _ in range(prefs.maxIters):
         time.sleep(0.5)
         listView = wnd.SysListView321
         assertTrue(listView and listView.exists())
@@ -103,20 +127,14 @@ def unpackSfpackImpl(s):
             break
         else:
             print('.', end='', flush=True)
+    
+    # pause while killing app, to make sure app has time to release file locks
+    time.sleep(1)
+    if app:
+        app.kill()
+    time.sleep(1)
+    return looksFinished
             
-    if not looksFinished:
-        assertTrue(False, s, 'timed out')
-    if not files.exists(tempnameout):
-        assertTrue(False, s, 'did not see')
-    if not files.getsize(tempnameout) > 100:
-        assertTrue(False, s, 'size is suspiciously small')
-    
-    time.sleep(1)
-    app.kill()
-    time.sleep(1)
-    files.move(tempnameout, out, False)
-    return tempname, out
-    
 def unpackSfpack(s):
     tempname, out = unpackSfpackImpl(s)
     trace('deleting original file', tempname)
@@ -124,7 +142,7 @@ def unpackSfpack(s):
     
     # always create an adjacent text file, even if there wasn't attached
     # information, just for consistency
-    msg = '\r\n(' + files.getname(s) + ')'
+    msg = '\r\n(' + s + ')'
     appendToAdjacentTextFile(s, msg, prefix=False)
     
     # don't overheat the cpu
@@ -148,15 +166,21 @@ def runTest():
     # convert them into sf2 files and txt files
     trace('done setting up sf2 files into test directory')
     sys.argv = [__file__, testdir]
-    startScript(unpackSfpack, getFilenamesAndCheckIfFilesAlreadyExist, runTest, '.sfpack', files.getname(__file__))
+    startScript(lambda: 0, unpackSfpack, getFilenamesAndCheckIfFilesAlreadyExist, runTest, '.sfpack', files.getname(__file__))
     trace(f'test complete. if you look at {testdir}, all sfpack files should have been converted to sf2.')
     if getInputBool('delete temp files now?'):
         files.ensure_empty_directory(testdir)
+        
+def checkPrereqsBeforeRun():
+    checkPrereq(sfpackbin, 'sfpack.exe')
+    trace("Just a reminder :)")
+    trace("if a message appears saying 'Could not register shell extension!', it's not a problem, just wait a few seconds and we will close it.")
+    getRawInput('Press Enter to continue')
 
 def go():
-    warn("if an error msg shows up saying 'Could not register shell extension!', ignore it because we can automatically close it.")
-    checkPrereq(sfpackbin, 'sfpack.exe')
-    startScript(unpackSfpack, getFilenamesAndCheckIfFilesAlreadyExist, runTest, '.sfpack', files.getname(__file__))
+    startScript(checkPrereqsBeforeRun, unpackSfpack, 
+        getFilenamesAndCheckIfFilesAlreadyExist, runTest,
+        '.sfpack', files.getname(__file__))
 
 if __name__=='__main__':
     go()

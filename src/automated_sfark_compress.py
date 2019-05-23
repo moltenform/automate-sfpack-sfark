@@ -10,6 +10,8 @@
 # if you are running a 64bit python, you might see
 # UserWarning: 32-bit application should be automated using 32-bit Python
 # but everything still seems to work.
+#
+#
 
 from automated_common import *
 import os
@@ -40,9 +42,22 @@ def runSfarkXtc(sin, sout):
     assertTrue(sin.lower().endswith('.sfark'), sin)
     assertTrue(sout.lower().endswith('.sf2'), sout)
     assertTrue(not files.exists(sout), sout)
+    
     args = [sfarkxtcbin, sin, sout, '--quiet']
-    files.run(args)
-    assertTrue(files.exists(sout), sout)
+    try:
+        if files.getsize(sin) > 100:
+            files.run(args)
+        else:
+            logSeriousError('input file size is too small, probably an invalid file')
+    except:
+        logSeriousError('sfarkxtc failed to run')
+        logSeriousError(str(sys.exc_info()[1]))
+
+    if not files.exists(sout):
+        # log the error, and write a small placeholder file so that we can continue
+        # running as if it had completed as expected
+        logSeriousError('sfarkxtc did not make an output file')
+        files.writeall(sout, '(placeholder)', 'w')
 
 searchFor = 'Compressing '
 
@@ -66,21 +81,46 @@ def getFilenamesAndCheckIfFilesAlreadyExist(s):
     return s, out, tempname, tempnameout
 
 def compressToSfarkImpl(s):
+    addToLog(f'compressToSfarkImpl {s}')
     s, out, tempname, tempnameout = getFilenamesAndCheckIfFilesAlreadyExist(s)
     trace('renaming', s,'\n', tempname)
     files.move(s, tempname, False)
     
+    looksFinished = None
+    try:
+        looksFinished = runPywinAuto(s, out, tempname, tempnameout)
+    except:
+        logSeriousError(f'failure while automating {sfarkbin}')
+        logSeriousError(str(sys.exc_info()[1]))
+    
+    if not looksFinished:
+        logSeriousError('timed out')
+    if not files.exists(tempnameout):
+        # log the error, and write a small placeholder file so that we can continue
+        # running as if it had completed as expected
+        logSeriousError('did not see output')
+        files.writeall(tempnameout, '(placeholder)', 'w')
+    if not files.getsize(tempnameout) > 100:
+        logSeriousError('size is suspiciously small')
+    files.move(tempnameout, out, False)
+    return tempname, out
+
+def runPywinAuto(s, out, tempname, tempnameout):
+    if not files.getsize(tempname) > 100:
+        logSeriousError('input file size is too small, probably an invalid file')
+        return True
+        
     from pywinauto.application import Application
     assertTrue(not '"' in sfarkbin, sfarkbin)
     assertTrue(not '"' in tempname, tempname)
     app = Application(backend="win32").start(f'"{sfarkbin}" "{tempname}"')
-    
-    # wait for the app to be launched/compression started
+
+    # wait for the app to be launch and start compression
     time.sleep(5)
-    
+
     looksFinished = False
     trace('waiting...')
-    for _ in range(maxIters):
+    for _ in range(prefs.maxIters):
         time.sleep(0.5)
         wnd = app.window(title='Compressing a.sf2...')
         if not wnd or not wnd.exists():
@@ -90,18 +130,12 @@ def compressToSfarkImpl(s):
         else:
             print('.', end='', flush=True)
     
-    if not looksFinished:
-        assertTrue(False, s, 'timed out')
-    if not files.exists(tempnameout):
-        assertTrue(False, s, 'did not see')
-    if not files.getsize(tempnameout) > 100:
-        assertTrue(False, s, 'size is suspiciously small')
-        
+    # pause while killing app, to make sure app has time to release file locks
     time.sleep(1)
-    app.kill()
+    if app:
+        app.kill()
     time.sleep(1)
-    files.move(tempnameout, out, False)
-    return tempname, out
+    return looksFinished
 
 def compressToSfark(s):
     checkBeforeRun(warnBeforeRun, files.getname(__file__))
@@ -117,7 +151,9 @@ def compressToSfark(s):
         runSfarkXtc(out, tempUnpackName)
         checkSumOut = files.computeHash(tempUnpackName, 'md5')
         trace('verifying match', expectChecksum, checkSumOut)
-        assertEq(expectChecksum, checkSumOut, s, tempUnpackName)
+        if expectChecksum != checkSumOut:
+            logSeriousError(f'checksum mismatch!!! {expectChecksum} {checkSumOut}')
+        
         trace('deleting temporary file', tempUnpackName)
         files.delete(tempUnpackName)
     trace('deleting original file', tempname)
@@ -126,9 +162,12 @@ def compressToSfark(s):
     # don't overheat the cpu
     trace('sleeping...')
     secondsRestBetweenConversions = 10
+    stopIfStopMarkerFound()
     time.sleep(secondsRestBetweenConversions)
+    stopIfStopMarkerFound()
 
 def recurseSfpackToSfark(dir):
+    prefs.continueOnErr = True
     import automated_sfpack_decompress
     for f, short in files.recursefiles(dir):
         if short.lower().endswith('.sfpack'):
@@ -140,6 +179,9 @@ def recurseSfpackToSfark(dir):
             stopIfStopMarkerFound()
             sf2 = automated_sfpack_decompress.unpackSfpack(f)
             compressToSfark(sf2)
+    
+    if prefs.errsOccurred:
+        warn('warning: errors occurred. please see the log for more information.')
 
 def runTest():
     # run these tests with "automated_sfark_compress.py --test"
@@ -158,17 +200,20 @@ def runTest():
     # convert them into sfarks
     trace('done setting up sf2 files into test directory')
     sys.argv = [__file__, testdir]
-    startScript(compressToSfark, getFilenamesAndCheckIfFilesAlreadyExist, runTest, '.sf2', files.getname(__file__))
+    startScript(lambda: 0, compressToSfark, getFilenamesAndCheckIfFilesAlreadyExist, runTest, '.sf2', files.getname(__file__))
     trace(f'test complete. if you look at {testdir}, all sf2 files should have been converted to sfark.')
     if getInputBool('delete temp files now?'):
         files.ensure_empty_directory(testdir)
 
-def go():
+def checkPrereqsBeforeRun():
     checkPrereq(sfarkbin, 'sfark.exe')
     if useSfarkXtcToConfirmIntegrity:
         checkPrereq(sfarkxtcbin, 'sfarkxtc.exe', '"releases" at https://github.com/moltenform/sfarkxtc-windows')
-    
-    startScript(compressToSfark, getFilenamesAndCheckIfFilesAlreadyExist, runTest, '.sf2', files.getname(__file__))
+
+def go():
+    startScript(checkPrereqsBeforeRun, compressToSfark,
+        getFilenamesAndCheckIfFilesAlreadyExist, runTest,
+        '.sf2', files.getname(__file__))
 
 if __name__=='__main__':
     go()
