@@ -34,7 +34,8 @@ def getFilenamesAndCheckIfFilesAlreadyExist(s):
     assertTrue(not files.exists(out), 'already exists', out)
     
     # renaming because 
-    # it allows easier window search
+    # 1) it allows easier window-title search
+    # 2) avoids potential problems with unicode chars
     tempname = files.getparent(s) + '\\a.sfpack'
     tempnameout = files.getparent(s) + '\\a.sf2'
     assertTrue(not files.exists(tempname), 'already exists', tempname)
@@ -50,14 +51,26 @@ def unpackSfpackImpl(s):
     trace('renaming', s,'\n', tempname)
     files.move(s, tempname, False)
     
-    looksFinished = None
+    state = Bucket(looksFinished=False, app=None)
     try:
-        looksFinished = runPywinAuto(s, out, tempname, tempnameout)
+        runPywinAuto(state, s, out, tempname, tempnameout)
     except:
+        errInfo = str(sys.exc_info())
         logSeriousError(f'failure while automating {sfpackbin}')
-        logSeriousError(str(sys.exc_info()[1]))
-    
-    if not looksFinished:
+        logSeriousError(errInfo)
+        
+    try:
+        # pause while killing app, to make sure app has time to release file locks
+        time.sleep(1)
+        if state.app:
+            state.app.kill()
+        time.sleep(1)
+    except:
+        errInfo = str(sys.exc_info())
+        logSeriousError(f'failure while running app.kill()')
+        logSeriousError(errInfo)
+        
+    if not state.looksFinished:
         logSeriousError('timed out')
     if not files.exists(tempnameout):
         logSeriousError('did not see output')
@@ -68,7 +81,7 @@ def unpackSfpackImpl(s):
     files.move(tempnameout, out, False)
     return tempname, out
     
-def runPywinAuto(s, out, tempname, tempnameout):
+def runPywinAuto(state, s, out, tempname, tempnameout):
     if not files.getsize(tempname) > 100:
         logSeriousError('input file size is too small, probably an invalid file')
         return True
@@ -76,19 +89,19 @@ def runPywinAuto(s, out, tempname, tempnameout):
     from pywinauto.application import Application
     assertTrue(not '"' in sfpackbin, sfpackbin)
     assertTrue(not '"' in tempname, tempname)
-    app = Application(backend="win32").start(f'"{sfpackbin}" "{tempname}"')
+    state.app = Application(backend="win32").start(f'"{sfpackbin}" "{tempname}"')
         
     # allow time for app to open
     time.sleep(5) 
     
-    wnd = app.window(class_name="#32770")
+    wnd = state.app.window(class_name="#32770")
     if wnd and wnd.exists():
         trace("might be the Cannot Register Shell Extension dialog, don't worry, we'll close it.")
         time.sleep(1)
         wnd.type_keys('{ENTER}')
         time.sleep(1)
         
-    wnd = app.window(class_name="SFPack")
+    wnd = state.app.window(class_name="SFPack")
     if wnd and wnd.exists():
         trace('found main window')
     else:
@@ -100,7 +113,7 @@ def runPywinAuto(s, out, tempname, tempnameout):
     lookForWndTitles = ["License for a", "Licensing for a", "Information for a"]
     for lookForWndTitle in lookForWndTitles:
         time.sleep(1)
-        wndinfo = app.window(title=lookForWndTitle, class_name="#32770")
+        wndinfo = state.app.window(title=lookForWndTitle, class_name="#32770")
         if wndinfo and wndinfo.exists():
             trace(f'Getting {lookForWndTitle}')
             assertTrue(wndinfo.edit1 and wndinfo.edit1.exists())
@@ -114,7 +127,6 @@ def runPywinAuto(s, out, tempname, tempnameout):
             wndinfo.type_keys('{ENTER}')
             time.sleep(1)
     
-    looksFinished = False
     trace('waiting...')
     for _ in range(prefs.maxIters):
         time.sleep(0.5)
@@ -122,19 +134,12 @@ def runPywinAuto(s, out, tempname, tempnameout):
         assertTrue(listView and listView.exists())
         listViewText = ' '.join(listView.texts())
         if searchFor in listViewText:
-            looksFinished = True
+            state.looksFinished = True
             print('looks done')
             break
         else:
             print('.', end='', flush=True)
-    
-    # pause while killing app, to make sure app has time to release file locks
-    time.sleep(1)
-    if app:
-        app.kill()
-    time.sleep(1)
-    return looksFinished
-            
+
 def unpackSfpack(s):
     tempname, out = unpackSfpackImpl(s)
     trace('deleting original file', tempname)
@@ -184,4 +189,3 @@ def go():
 
 if __name__=='__main__':
     go()
-    

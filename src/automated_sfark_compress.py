@@ -50,8 +50,9 @@ def runSfarkXtc(sin, sout):
         else:
             logSeriousError('input file size is too small, probably an invalid file')
     except:
+        errInfo = str(sys.exc_info())
         logSeriousError('sfarkxtc failed to run')
-        logSeriousError(str(sys.exc_info()[1]))
+        logSeriousError(errInfo)
 
     if not files.exists(sout):
         # log the error, and write a small placeholder file so that we can continue
@@ -70,6 +71,7 @@ def getFilenamesAndCheckIfFilesAlreadyExist(s):
     # make a simpler filename because 
     # 1) sfark shows error dialog on complex filenames
     # 2) allows easier window search
+    # 3) avoids potential problems with unicode chars
     tempname = files.getparent(s) + '\\a.sf2'
     tempnameout = files.getparent(s) + '\\a.sfark'
     tempnameunpack = files.getparent(s) + '\\tmpUnpack.sf2'
@@ -86,14 +88,26 @@ def compressToSfarkImpl(s):
     trace('renaming', s,'\n', tempname)
     files.move(s, tempname, False)
     
-    looksFinished = None
+    state = Bucket(looksFinished=False, app=None)
     try:
-        looksFinished = runPywinAuto(s, out, tempname, tempnameout)
+        runPywinAuto(state, s, out, tempname, tempnameout)
     except:
+        errInfo = str(sys.exc_info())
         logSeriousError(f'failure while automating {sfarkbin}')
-        logSeriousError(str(sys.exc_info()[1]))
+        logSeriousError(errInfo)
     
-    if not looksFinished:
+    try:
+        # pause while killing app, to make sure app has time to release file locks
+        time.sleep(1)
+        if state.app:
+            state.app.kill()
+        time.sleep(1)
+    except:
+        errInfo = str(sys.exc_info())
+        logSeriousError(f'failure while running app.kill()')
+        logSeriousError(errInfo)
+    
+    if not state.looksFinished:
         logSeriousError('timed out')
     if not files.exists(tempnameout):
         # log the error, and write a small placeholder file so that we can continue
@@ -105,7 +119,7 @@ def compressToSfarkImpl(s):
     files.move(tempnameout, out, False)
     return tempname, out
 
-def runPywinAuto(s, out, tempname, tempnameout):
+def runPywinAuto(state, s, out, tempname, tempnameout):
     if not files.getsize(tempname) > 100:
         logSeriousError('input file size is too small, probably an invalid file')
         return True
@@ -113,29 +127,21 @@ def runPywinAuto(s, out, tempname, tempnameout):
     from pywinauto.application import Application
     assertTrue(not '"' in sfarkbin, sfarkbin)
     assertTrue(not '"' in tempname, tempname)
-    app = Application(backend="win32").start(f'"{sfarkbin}" "{tempname}"')
+    state.app = Application(backend="win32").start(f'"{sfarkbin}" "{tempname}"')
 
     # wait for the app to be launch and start compression
     time.sleep(5)
 
-    looksFinished = False
     trace('waiting...')
     for _ in range(prefs.maxIters):
         time.sleep(0.5)
-        wnd = app.window(title='Compressing a.sf2...')
+        wnd = state.app.window(title='Compressing a.sf2...')
         if not wnd or not wnd.exists():
-            looksFinished = True
+            state.looksFinished = True
             print('looks done')
             break
         else:
             print('.', end='', flush=True)
-    
-    # pause while killing app, to make sure app has time to release file locks
-    time.sleep(1)
-    if app:
-        app.kill()
-    time.sleep(1)
-    return looksFinished
 
 def compressToSfark(s):
     checkBeforeRun(warnBeforeRun, files.getname(__file__))
@@ -171,17 +177,19 @@ def recurseSfpackToSfark(dir):
     import automated_sfpack_decompress
     for f, short in files.recursefiles(dir):
         if short.lower().endswith('.sfpack'):
-            getFilenamesAndCheckIfFilesAlreadyExist(f.replace('.sfpack', '.sf2'))
             automated_sfpack_decompress.getFilenamesAndCheckIfFilesAlreadyExist(f)
+            getFilenamesAndCheckIfFilesAlreadyExist(f.replace('.sfpack', '.sf2'))
             
     for f, short in files.recursefiles(dir):
         if short.lower().endswith('.sfpack'):
             stopIfStopMarkerFound()
             sf2 = automated_sfpack_decompress.unpackSfpack(f)
+            addToLog('md5 checksum=' + files.computeHash(sf2, 'md5'))
             compressToSfark(sf2)
     
     if prefs.errsOccurred:
         warn('warning: errors occurred. please see the log for more information.')
+
 
 def runTest():
     # run these tests with "automated_sfark_compress.py --test"
