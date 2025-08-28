@@ -5,6 +5,7 @@
 import sys
 from shinerainsevenlib.standard import *
 
+
 def parseArgs(ext):
     import argparse
     parser = argparse.ArgumentParser()
@@ -13,7 +14,7 @@ def parseArgs(ext):
     parser.add_argument("--test", help="run tests", action="store_true")
     parser.add_argument("--continue_on_err", help="always continue if errors occur", action="store_true")
     args = parser.parse_args()
-    
+
     if not args.test:
         filepath = args.path
         if filepath.lower().endswith(ext):
@@ -24,8 +25,9 @@ def parseArgs(ext):
             if not files.isDir(filepath):
                 trace('not a directory')
                 return False, False, False, False
-    
+
     return args.path, args.recurse, args.test, args.continue_on_err
+
 
 def startScript(fnBefore, fn, fnCheck, fnTest, extension, scriptname):
     filepath, isRecurse, isTest, isContinue = parseArgs(extension)
@@ -44,9 +46,10 @@ def startScript(fnBefore, fn, fnCheck, fnTest, extension, scriptname):
             warn(w)
         fnBefore()
         startScriptRun(fn, fnCheck, extension, filepath, isRecurse)
-    
+
     if prefs.errsOccurred:
         warn('warning: errors occurred. please see the log for more information.')
+
 
 def startScriptRun(fn, fnCheck, extension, filepath, isRecurse):
     # check that pywinauto is installed
@@ -56,20 +59,20 @@ def startScriptRun(fn, fnCheck, extension, filepath, isRecurse):
         trace("Could not start pywinauto")
         trace("try running 'pip install pywinauto'")
         sys.exit(0)
-    
+
     # if given a single file, just run that
     if files.isFile(filepath):
         fnCheck(filepath)
         fn(filepath)
         return
-    
+
     # check all the files, helps catch any errors early
     trace('checking all files...')
     fnIter = files.recurseFiles if isRecurse else files.listFiles
     for f, short in fnIter(filepath):
         if short.lower().endswith(extension):
             fnCheck(f)
-            
+
     # process all the files
     trace('processing all files...')
     fnIter = files.recurseFiles if isRecurse else files.listFiles
@@ -78,6 +81,7 @@ def startScriptRun(fn, fnCheck, extension, filepath, isRecurse):
             stopIfStopMarkerFound()
             fn(f)
 
+
 def checkPrereq(binpath, binname, website=None):
     if not files.isFile(binpath):
         trace(f"Could not find '{binpath}'")
@@ -85,6 +89,7 @@ def checkPrereq(binpath, binname, website=None):
         if website:
             trace(f"You can probably find this here: {website}")
         sys.exit(0)
+
 
 def checkBeforeRun(warnBeforeRun, scriptname):
     withoutExt = files.getName(scriptname).split('.')[0]
@@ -99,6 +104,7 @@ def checkBeforeRun(warnBeforeRun, scriptname):
                 warn('warning: errors occurred. please see the log for more information.')
             sys.exit(0)
 
+
 def stopIfStopMarkerFound():
     markerFile = 'nocpy_request_stop'
     if files.exists(markerFile):
@@ -107,12 +113,14 @@ def stopIfStopMarkerFound():
             warn('warning: errors occurred. please see the log for more information.')
         sys.exit(0)
 
+
 def getHumanTime():
     import time
     import datetime
     timestamp = time.time()
     value = datetime.datetime.fromtimestamp(timestamp)
     return value.strftime('%Y-%m-%d %H:%M:%S')
+
 
 def addToLog(s):
     with open('nocpy_log.txt', 'a', encoding='utf8') as f:
@@ -121,6 +129,7 @@ def addToLog(s):
         f.write(' ')
         f.write(s)
 
+
 def logSeriousError(s):
     prefs.errsOccurred = True
     trace('Serious Error: ' + s)
@@ -128,10 +137,10 @@ def logSeriousError(s):
     if not prefs.continueOnErr:
         sys.exit(1)
 
+
 # pywinauto tips: print_control_identifiers(depth=1)
 prefs = Bucket(
-    maxIters = 500, # about 4 minutes
-    continueOnErr = False,
-    errsOccurred = False
+    maxIters=500, # about 4 minutes
+    continueOnErr=False,
+    errsOccurred=False
 )
-
