@@ -21,8 +21,8 @@ import time
 useSfarkXtcToConfirmIntegrity = True
 
 # download sfarkxtc.exe from 'releases' at https://github.com/moltenform/sfarkxtc-windows
-sfarkbin = r'C:\data\e4\downloads\dloads\SFPack\sfarkbinaries\sfArk.exe'
-sfarkxtcbin = r'C:\data\e2\d_1\repos\sfarkxtc\sfarkxtc-windows-3.0b-win64\sfarkxtc-windows-3.0b-win64\sfarkxtc.exe'
+sfarkbin = r"C:\m\m\software_save\current_exe\audio\apps\midi\sfarkbinaries\sfArk.exe"
+sfarkxtcbin = r"C:\m\m\code_mine\code_repos_tier2\sfarkxtc\sfarkxtc-windows-3.0b-win64\sfarkxtc.exe"
 
 warnBeforeRun = '''
 note: before running, I recommend that you

@@ -3,8 +3,7 @@
 # GPLv3
 
 import sys
-sys.path.append('bn_python_common.zip')
-from bn_python_common import *
+from shinerainsevenlib.standard import *
 
 def parseArgs(ext):
     import argparse
@@ -101,7 +100,7 @@ def checkBeforeRun(warnBeforeRun, scriptname):
             sys.exit(0)
 
 def stopIfStopMarkerFound():
-    markerFile = f'nocpy_request_stop'
+    markerFile = 'nocpy_request_stop'
     if files.exists(markerFile):
         trace(f'exiting because the file {markerFile} is present.')
         if prefs.errsOccurred:

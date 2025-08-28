@@ -26,7 +26,8 @@ Supports attached information and licenses for both sfark and sfpack. If you pro
 * (Optional) Get a copy of `sfarkxtc.exe` from [here](https://github.com/moltenform/sfarkxtc-windows)
 * (Optional) Modify `automated_sfark_compress.py` to point to the path to `sfarkxtc.exe`
 * Install Python3
-* Run `pip install pywinauto`
+* Run `python -m pip install shinerainsevenlib`
+* Run `python -m pip install pywinauto`
 
 To batch compress all sf2 soundfonts in a directory, run
 `python src/automated_sfark_compress.py /directory/with/soundfonts`

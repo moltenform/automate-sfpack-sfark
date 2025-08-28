@@ -12,7 +12,7 @@ from automated_common import *
 import os
 import time
 
-sfpackbin = r'C:\data\e4\downloads\dloads\SFPack\sfpack.exe'
+sfpackbin = r"C:\m\m\software_save\current_exe\audio\apps\midi\sfpackbinaries\SFPACK.EXE"
 
 def appendToAdjacentTextFile(path, s, prefix=True):
     a, b = os.path.splitext(path)
@@ -180,7 +180,7 @@ def checkPrereqsBeforeRun():
     checkPrereq(sfpackbin, 'sfpack.exe')
     trace("Just a reminder :)")
     trace("if a message appears saying 'Could not register shell extension!', it's not a problem, just wait a few seconds and we will close it.")
-    getRawInput('Press Enter to continue')
+    srss.getRawInput('Press Enter to continue')
 
 def go():
     startScript(checkPrereqsBeforeRun, unpackSfpack, 

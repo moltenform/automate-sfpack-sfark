@@ -1,0 +1,23 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Run sfark_compress tests",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "automated_sfark_compress.py",
+            "args": ["--test", "1"],
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Run sfpack_decompress tests",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "automated_sfpack_decompress.py",
+            "args": ["--test", "1"],
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}"
+        },
+    ]
+}
