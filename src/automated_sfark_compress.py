@@ -44,6 +44,7 @@ def runSfarkXtc(sin, sout):
     assertTrue(sout.lower().endswith('.sf2'), sout)
     assertTrue(not files.exists(sout), sout)
 
+    assertTrue(files.findBinaryOnPath(sfarkxtcbin))
     args = [sfarkxtcbin, sin, sout, '--quiet']
     try:
         if files.getSize(sin) > 100:
@@ -71,7 +72,7 @@ def getFilenamesAndCheckIfFilesAlreadyExist(s):
     out = a + '.sfark'
     assertTrue(not files.exists(out), 'already exists', out)
 
-    # make a simpler filename because
+    # make a simpler filename because:
     # 1) sfark shows error dialog on complex filenames
     # 2) allows easier window search
     # 3) avoids potential problems with unicode chars

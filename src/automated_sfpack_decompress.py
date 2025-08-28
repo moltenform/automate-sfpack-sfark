@@ -50,6 +50,7 @@ def getFilenamesAndCheckIfFilesAlreadyExist(s):
 
 def unpackSfpackImpl(s):
     addToLog(f'unpackSfpackImpl {s}')
+    addToLog(f"size={files.getSize(s)} md5={files.computeHash(s, 'md5')}")
     s, out, tempname, tempnameout = getFilenamesAndCheckIfFilesAlreadyExist(s)
 
     trace('renaming', s, '\n', tempname)
@@ -68,6 +69,9 @@ def unpackSfpackImpl(s):
         time.sleep(1)
         if state.app:
             state.app.kill()
+            time.sleep(1)
+            state.app.kill()
+            state.app = None
         time.sleep(1)
     except:
         errInfo = str(sys.exc_info())
@@ -153,8 +157,13 @@ def unpackSfpack(s):
 
     # always create an adjacent text file, even if there wasn't attached
     # information, just for consistency
-    msg = '\r\n(' + s + ')'
-    appendToAdjacentTextFile(s, msg, prefix=False)
+    try:
+        msg = '\r\n(' + s + ')'
+        appendToAdjacentTextFile(s, msg, prefix=False)
+    except:
+        errInfo = str(sys.exc_info())
+        logSeriousError(f'failure in unpackSfpack appendToAdjacentTextFile')
+        logSeriousError(errInfo)
 
     # don't overheat the cpu
     trace('sleeping...')
