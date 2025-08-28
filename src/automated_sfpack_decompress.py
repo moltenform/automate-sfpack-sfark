@@ -18,7 +18,7 @@ def appendToAdjacentTextFile(path, s, prefix=True):
     a, b = os.path.splitext(path)
     outPath = a + '.txt'
     if prefix:
-        s = "\r\n(extracted from '" + files.getname(a) + \
+        s = "\r\n(extracted from '" + files.getName(a) + \
             ".sfpack' by Ben Fisher's automated_sfpack_decompress.py)\r\n" + s
     
     # append without changing the encoding of any existing data
@@ -36,8 +36,8 @@ def getFilenamesAndCheckIfFilesAlreadyExist(s):
     # renaming because 
     # 1) it allows easier window-title search
     # 2) avoids potential problems with unicode chars
-    tempname = files.getparent(s) + '\\a.sfpack'
-    tempnameout = files.getparent(s) + '\\a.sf2'
+    tempname = files.getParent(s) + '\\a.sfpack'
+    tempnameout = files.getParent(s) + '\\a.sf2'
     assertTrue(not files.exists(tempname), 'already exists', tempname)
     assertTrue(not files.exists(tempnameout), 'already exists', tempnameout)
     
@@ -74,15 +74,15 @@ def unpackSfpackImpl(s):
         logSeriousError('timed out')
     if not files.exists(tempnameout):
         logSeriousError('did not see output')
-        files.writeall(tempnameout, 'placeholder', 'w')
-    if not files.getsize(tempnameout) > 100:
+        files.writeAll(tempnameout, 'placeholder', 'w')
+    if not files.getSize(tempnameout) > 100:
         logSeriousError('size is suspiciously small')
         
     files.move(tempnameout, out, False)
     return tempname, out
     
 def runPywinAuto(state, s, out, tempname, tempnameout):
-    if not files.getsize(tempname) > 100:
+    if not files.getSize(tempname) > 100:
         logSeriousError('input file size is too small, probably an invalid file')
         return True
     
@@ -160,21 +160,21 @@ def runTest():
     # run these tests with "automated_sfpack_decompress.py --test"
     srcSfpack = './test/resources/sfpack'
     testdir = './test/nocpy_temp'
-    files.ensure_empty_directory(testdir)
+    files.ensureEmptyDirectory(testdir)
     
     # get some sfpack files for testing
     trace('setting up sfpack files into test directory...')
-    for f, short in files.listfiles(srcSfpack):
+    for f, short in files.listFiles(srcSfpack):
         if short.lower().endswith('.sfpack'):
             files.copy(f, files.join(testdir, short), False)
     
     # convert them into sf2 files and txt files
     trace('done setting up sf2 files into test directory')
     sys.argv = [__file__, testdir]
-    startScript(lambda: 0, unpackSfpack, getFilenamesAndCheckIfFilesAlreadyExist, runTest, '.sfpack', files.getname(__file__))
+    startScript(lambda: 0, unpackSfpack, getFilenamesAndCheckIfFilesAlreadyExist, runTest, '.sfpack', files.getName(__file__))
     trace(f'test complete. if you look at {testdir}, all sfpack files should have been converted to sf2.')
     if getInputBool('delete temp files now?'):
-        files.ensure_empty_directory(testdir)
+        files.ensureEmptyDirectory(testdir)
         
 def checkPrereqsBeforeRun():
     checkPrereq(sfpackbin, 'sfpack.exe')
@@ -185,7 +185,7 @@ def checkPrereqsBeforeRun():
 def go():
     startScript(checkPrereqsBeforeRun, unpackSfpack, 
         getFilenamesAndCheckIfFilesAlreadyExist, runTest,
-        '.sfpack', files.getname(__file__))
+        '.sfpack', files.getName(__file__))
 
 if __name__=='__main__':
     go()

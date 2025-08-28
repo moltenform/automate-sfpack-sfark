@@ -18,11 +18,11 @@ def parseArgs(ext):
     if not args.test:
         filepath = args.path
         if filepath.lower().endswith(ext):
-            if not files.isfile(filepath):
+            if not files.isFile(filepath):
                 trace('not a file')
                 return False, False, False, False
         else:
-            if not files.isdir(filepath):
+            if not files.isDir(filepath):
                 trace('not a directory')
                 return False, False, False, False
     
@@ -59,28 +59,28 @@ def startScriptRun(fn, fnCheck, extension, filepath, isRecurse):
         sys.exit(0)
     
     # if given a single file, just run that
-    if files.isfile(filepath):
+    if files.isFile(filepath):
         fnCheck(filepath)
         fn(filepath)
         return
     
     # check all the files, helps catch any errors early
     trace('checking all files...')
-    fnIter = files.recursefiles if isRecurse else files.listfiles
+    fnIter = files.recurseFiles if isRecurse else files.listFiles
     for f, short in fnIter(filepath):
         if short.lower().endswith(extension):
             fnCheck(f)
             
     # process all the files
     trace('processing all files...')
-    fnIter = files.recursefiles if isRecurse else files.listfiles
+    fnIter = files.recurseFiles if isRecurse else files.listFiles
     for f, short in fnIter(filepath):
         if short.lower().endswith(extension):
             stopIfStopMarkerFound()
             fn(f)
 
 def checkPrereq(binpath, binname, website=None):
-    if not files.isfile(binpath):
+    if not files.isFile(binpath):
         trace(f"Could not find '{binpath}'")
         trace(f"Please update the python script with the right path to '{binname}'")
         if website:
@@ -88,13 +88,13 @@ def checkPrereq(binpath, binname, website=None):
         sys.exit(0)
 
 def checkBeforeRun(warnBeforeRun, scriptname):
-    withoutExt = files.getname(scriptname).split('.')[0]
+    withoutExt = files.getName(scriptname).split('.')[0]
     markerFile = f'.has_seen_msg_{withoutExt}'
     if not files.exists(markerFile):
         trace(warnBeforeRun)
         isContinue = getInputBool('Continue?')
         if isContinue:
-            files.writeall(markerFile, '', 'w')
+            files.writeAll(markerFile, '', 'w')
         else:
             if prefs.errsOccurred:
                 warn('warning: errors occurred. please see the log for more information.')
