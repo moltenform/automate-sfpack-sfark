@@ -75,7 +75,7 @@ def unpackSfpackImpl(s):
         time.sleep(1)
     except:
         errInfo = str(sys.exc_info())
-        logSeriousError(f'failure while running app.kill()')
+        logSeriousError('failure while running app.kill()')
         logSeriousError(errInfo)
 
     if not state.looksFinished:
@@ -149,6 +149,8 @@ def runPywinAuto(state, s, out, tempname, tempnameout):
         else:
             print('.', end='', flush=True)
 
+    return None
+
 
 def unpackSfpack(s):
     tempname, out = unpackSfpackImpl(s)
@@ -162,7 +164,7 @@ def unpackSfpack(s):
         appendToAdjacentTextFile(s, msg, prefix=False)
     except:
         errInfo = str(sys.exc_info())
-        logSeriousError(f'failure in unpackSfpack appendToAdjacentTextFile')
+        logSeriousError('failure in unpackSfpack appendToAdjacentTextFile')
         logSeriousError(errInfo)
 
     # don't overheat the cpu

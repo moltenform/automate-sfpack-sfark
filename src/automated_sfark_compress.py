@@ -109,7 +109,7 @@ def compressToSfarkImpl(s):
         time.sleep(1)
     except:
         errInfo = str(sys.exc_info())
-        logSeriousError(f'failure while running app.kill()')
+        logSeriousError('failure while running app.kill()')
         logSeriousError(errInfo)
 
     if not state.looksFinished:
@@ -148,6 +148,8 @@ def runPywinAuto(state, s, out, tempname, tempnameout):
             break
         else:
             print('.', end='', flush=True)
+
+    return None
 
 
 def compressToSfark(s):
